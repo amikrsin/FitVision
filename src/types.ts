@@ -22,3 +22,11 @@ export interface FitAnalysis {
   stylingTips: string[];
   fitBadges: string[];
 }
+
+export interface StoredProfile {
+  id: string;
+  name: string;
+  photo: string;
+  profile: BodyProfile;
+  createdAt: number;
+}
