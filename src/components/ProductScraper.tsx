@@ -21,9 +21,9 @@ export function ProductScraper({ onScraped }: ProductScraperProps) {
     try {
       const details = await scrapeProductUrl(url);
       onScraped(details);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('Failed to extract product details. Please check the URL and try again.');
+      setError(err.message || 'Failed to extract product details. Please check the URL and try again.');
     } finally {
       setLoading(false);
     }

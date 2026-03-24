@@ -6,7 +6,10 @@ export async function scrapeProductUrl(url: string): Promise<ProductDetails> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url }),
   });
-  if (!response.ok) throw new Error("Failed to scrape product");
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to scrape product");
+  }
   return response.json();
 }
 
@@ -38,6 +41,9 @@ export async function analyzeFit(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ generatedImageBase64, productDetails, profile }),
   });
-  if (!response.ok) throw new Error("Failed to analyze fit");
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to analyze fit");
+  }
   return response.json();
 }

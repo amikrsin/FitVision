@@ -14,10 +14,24 @@ app.use(express.json({ limit: '10mb' }));
 
 // Gemini Initialization Helper
 const getAI = () => {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not set. Please add your Gemini API key in the Settings menu.");
+  let apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  
+  if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey === "your-api-key") {
+    throw new Error("Gemini API Key is missing. Please go to the 'Settings' menu (gear icon) -> 'Secrets' and add a variable named GEMINI_API_KEY with your key from https://aistudio.google.com/app/apikey");
   }
+
+  // Sanitize the key (remove quotes, whitespace, or accidental prefixes)
+  apiKey = apiKey.trim().replace(/^['"]|['"]$/g, '');
+  if (apiKey.includes('=')) {
+    apiKey = apiKey.split('=')[1].trim().replace(/^['"]|['"]$/g, '');
+  }
+
+  if (!apiKey.startsWith("AIza")) {
+    throw new Error("The provided GEMINI_API_KEY does not appear to be a valid Google API key (should start with 'AIza'). Please check your key in Settings > Secrets.");
+  }
+
+  console.log(`[AI] Initializing with key length: ${apiKey.length}, prefix: ${apiKey.substring(0, 4)}...`);
+
   return new GoogleGenAI({ apiKey });
 };
 
@@ -46,6 +60,27 @@ const checkRateLimit = (req: express.Request, res: express.Response, next: expre
 // API Routes
 app.post("/api/scrape", async (req, res) => {
   const { url } = req.body;
+  if (!url) return res.status(400).json({ error: "URL is required" });
+
+  // If the URL is already an image, return it directly to avoid unnecessary AI calls
+  if (url.match(/\.(jpg|jpeg|png|webp|gif|avif)$/i) || url.includes('assets.myntassets.com')) {
+    const fileName = url.split('/').pop()?.split('?')[0] || "Product";
+    const name = fileName
+      .replace(/-/g, ' ')
+      .replace(/_/g, ' ')
+      .replace(/\.(jpg|jpeg|png|webp|gif|avif)$/i, '')
+      .trim();
+    
+    return res.json({
+      name: name || "Product Image",
+      category: "Clothing",
+      color: "Unknown",
+      imageUrl: url,
+      description: "Product image from URL",
+      brand: "Unknown"
+    });
+  }
+
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
