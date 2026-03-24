@@ -1,0 +1,5 @@
+{
+  "name": "FitVision",
+  "description": "AI-powered virtual try-on tool for e-commerce apparel. Scrape product links, upload your photo, and see how you look in any outfit with instant fit analysis.",
+  "requestFramePermissions": ["camera"]
+}
