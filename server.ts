@@ -12,8 +12,14 @@ const PORT = 3000;
 // Middleware
 app.use(express.json({ limit: '10mb' }));
 
-// Gemini Initialization
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+// Gemini Initialization Helper
+const getAI = () => {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not set. Please add your Gemini API key in the Settings menu.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 // Simple Rate Limiting (In-memory for MVP)
 const usageStore = new Map<string, { count: number, date: string }>();
@@ -41,6 +47,7 @@ const checkRateLimit = (req: express.Request, res: express.Response, next: expre
 app.post("/api/scrape", async (req, res) => {
   const { url } = req.body;
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Extract product details from this e-commerce URL: ${url}. 
@@ -63,9 +70,9 @@ app.post("/api/scrape", async (req, res) => {
       },
     });
     res.json(JSON.parse(response.text));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to scrape product" });
+  } catch (error: any) {
+    console.error("Scrape Error:", error);
+    res.status(500).json({ error: error.message || "Failed to scrape product" });
   }
 });
 
@@ -74,6 +81,7 @@ app.post("/api/generate", checkRateLimit, async (req, res) => {
   const ip = req.ip || 'anonymous';
   
   try {
+    const ai = getAI();
     // Fetch product image as base64
     const imgRes = await fetch(productDetails.imageUrl);
     const blob = await imgRes.blob();
@@ -132,15 +140,16 @@ app.post("/api/generate", checkRateLimit, async (req, res) => {
     usageStore.set(ip, usage);
 
     res.json({ image: generatedImage });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to generate image" });
+  } catch (error: any) {
+    console.error("Generate Error:", error);
+    res.status(500).json({ error: error.message || "Failed to generate image" });
   }
 });
 
 app.post("/api/analyze", async (req, res) => {
   const { generatedImageBase64, productDetails, profile } = req.body;
   try {
+    const ai = getAI();
     const prompt = `Compare the generated try-on image with the user's provided measurements (${profile.height}/${profile.weight}). 
     Identify areas where the garment might feel tight or loose. 
     Provide a 'Fit Score' out of 100, size recommendation, 3 styling tips, and 2-3 fit badges.
@@ -183,9 +192,9 @@ app.post("/api/analyze", async (req, res) => {
       },
     });
     res.json(JSON.parse(response.text));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to analyze fit" });
+  } catch (error: any) {
+    console.error("Analyze Error:", error);
+    res.status(500).json({ error: error.message || "Failed to analyze fit" });
   }
 });
 
