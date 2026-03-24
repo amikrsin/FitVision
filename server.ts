@@ -14,7 +14,7 @@ app.use(express.json({ limit: '10mb' }));
 
 // Gemini Initialization Helper
 const getAI = () => {
-  let apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  let apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.GOOGLE_API_KEY;
   
   if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey === "your-api-key") {
     throw new Error("Gemini API Key is missing. Please go to the 'Settings' menu (gear icon) -> 'Secrets' and add a variable named GEMINI_API_KEY with your key from https://aistudio.google.com/app/apikey");
@@ -251,6 +251,8 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    const keyDetected = !!(process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.GOOGLE_API_KEY);
+    console.log(`[AI] Gemini API Key detected: ${keyDetected}`);
   });
 }
 
