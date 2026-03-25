@@ -3,6 +3,7 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
+import cors from "cors";
 
 dotenv.config();
 
@@ -10,6 +11,7 @@ const app = express();
 const PORT = 3000;
 
 // Middleware
+app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 // Gemini Initialization Helper
@@ -68,7 +70,7 @@ const checkRateLimit = (req: express.Request, res: express.Response, next: expre
   });
 
 // API Routes
-app.post("/api/scrape", async (req, res) => {
+app.post(["/api/scrape", "/api/scrape/"], async (req, res) => {
   const { url } = req.body;
   console.log(`[API] Scrape request for URL: ${url}`);
   if (!url) return res.status(400).json({ error: "URL is required" });
@@ -129,7 +131,7 @@ app.post("/api/scrape", async (req, res) => {
   }
 });
 
-app.post("/api/generate", checkRateLimit, async (req, res) => {
+app.post(["/api/generate", "/api/generate/"], checkRateLimit, async (req, res) => {
   const { userImageBase64, productDetails, profile } = req.body;
   const ip = req.ip || 'anonymous';
   
@@ -199,7 +201,7 @@ app.post("/api/generate", checkRateLimit, async (req, res) => {
   }
 });
 
-app.post("/api/analyze", async (req, res) => {
+app.post(["/api/analyze", "/api/analyze/"], async (req, res) => {
   const { generatedImageBase64, productDetails, profile } = req.body;
   try {
     const ai = getAI();
