@@ -116,7 +116,24 @@ export default function App() {
       setStep(4);
     } catch (error: any) {
       console.error(error);
-      alert(error.message || "Something went wrong during generation. Please try again.");
+      let message = "Something went wrong during generation. Please try again.";
+      
+      try {
+        // Try to parse JSON error from Gemini API
+        const errObj = JSON.parse(error.message);
+        if (errObj.error?.code === 429) {
+          message = "AI Quota Exceeded: The free tier limit for this AI model has been reached. Please try again in a few minutes or use a different API key.";
+        } else if (errObj.error?.message) {
+          message = errObj.error.message;
+        }
+      } catch (e) {
+        // Not JSON, use raw message if it's a string
+        if (typeof error.message === 'string' && error.message.length > 0) {
+          message = error.message;
+        }
+      }
+      
+      alert(message);
     } finally {
       setIsGenerating(false);
     }

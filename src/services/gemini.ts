@@ -186,8 +186,14 @@ async function generateDirectly(
   ];
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-image',
+    model: 'gemini-3.1-flash-image-preview',
     contents: { parts },
+    config: {
+      imageConfig: {
+        aspectRatio: "3:4",
+        imageSize: "1K"
+      }
+    }
   });
 
   for (const part of response.candidates?.[0]?.content?.parts || []) {
