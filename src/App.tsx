@@ -28,8 +28,23 @@ export default function App() {
   // Profile Management
   const [savedProfiles, setSavedProfiles] = useState<StoredProfile[]>([]);
   const [usageCount, setUsageCount] = useState(0);
+  const [apiKeyMissing, setApiKeyMissing] = useState(false);
 
   useEffect(() => {
+    // Check if API key is available
+    let key = "";
+    try {
+      // @ts-ignore
+      key = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+    } catch (e) {}
+
+    if (!key || key === "undefined" || key === "null" || key === "") {
+      setApiKeyMissing(true);
+      console.warn("[FitVision] GEMINI_API_KEY is missing in frontend environment.");
+    } else {
+      console.log("[FitVision] GEMINI_API_KEY detected in frontend environment.");
+    }
+
     // Load profiles
     const stored = localStorage.getItem('fitvision_profiles');
     if (stored) setSavedProfiles(JSON.parse(stored));
@@ -176,6 +191,11 @@ export default function App() {
                   <Clock size={12} />
                   {3 - usageCount} Generations left today
                 </div>
+                {apiKeyMissing && (
+                  <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-[10px] font-bold uppercase tracking-widest text-center">
+                    ⚠️ GEMINI_API_KEY is missing in Secrets. Please add it to Settings &gt; Secrets.
+                  </div>
+                )}
               </div>
 
               {/* Saved Profiles Section */}

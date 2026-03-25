@@ -3,8 +3,27 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 // Fallback direct Gemini client for static-only deployments
 const getDirectAI = () => {
-  const apiKey = (process as any).env?.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
-  if (!apiKey) return null;
+  // Try multiple ways to get the API key in the browser
+  let apiKey = "";
+  
+  try {
+    // @ts-ignore - Injected by Vite define
+    apiKey = process.env.GEMINI_API_KEY;
+  } catch (e) {}
+
+  if (!apiKey || apiKey === "undefined" || apiKey === "null") {
+    try {
+      // @ts-ignore
+      apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    } catch (e) {}
+  }
+
+  if (!apiKey || apiKey === "undefined" || apiKey === "null") {
+    console.error("No GEMINI_API_KEY found in frontend environment variables.");
+    return null;
+  }
+  
+  console.log("Initializing direct Gemini client with frontend API key.");
   return new GoogleGenAI({ apiKey });
 };
 
@@ -24,15 +43,17 @@ export async function scrapeProductUrl(url: string): Promise<ProductDetails> {
       }
     }
     
-    // If 404 or 405, we might be on a static host, try direct fallback
-    if (response.status === 404 || response.status === 405) {
+    // If 404, 405, or 500 (likely missing key), try direct fallback
+    if (response.status === 404 || response.status === 405 || response.status === 500) {
+      console.warn(`[AI] Backend returned ${response.status}, attempting direct browser fallback...`);
       return scrapeDirectly(url);
     }
 
     const text = await response.text();
     throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
   } catch (err: any) {
-    if (err.message.includes('404') || err.message.includes('405')) {
+    // If it's a network error or one of our fallback statuses
+    if (err.message.includes('404') || err.message.includes('405') || err.message.includes('500') || err instanceof TypeError) {
       return scrapeDirectly(url);
     }
     throw err;
@@ -103,14 +124,15 @@ export async function generateTryOnImage(
       return data.image;
     }
 
-    if (response.status === 404 || response.status === 405) {
+    if (response.status === 404 || response.status === 405 || response.status === 500) {
+      console.warn(`[AI] Backend returned ${response.status}, attempting direct browser fallback...`);
       return generateDirectly(userImageBase64, productDetails, profile);
     }
     
     const error = await response.json();
     throw new Error(error.error || "Failed to generate image");
   } catch (err: any) {
-    if (err.message.includes('404') || err.message.includes('405')) {
+    if (err.message.includes('404') || err.message.includes('405') || err.message.includes('500') || err instanceof TypeError) {
       return generateDirectly(userImageBase64, productDetails, profile);
     }
     throw err;
@@ -192,14 +214,15 @@ export async function analyzeFit(
       return response.json();
     }
 
-    if (response.status === 404 || response.status === 405) {
+    if (response.status === 404 || response.status === 405 || response.status === 500) {
+      console.warn(`[AI] Backend returned ${response.status}, attempting direct browser fallback...`);
       return analyzeDirectly(generatedImageBase64, productDetails, profile);
     }
 
     const error = await response.json();
     throw new Error(error.error || "Failed to analyze fit");
   } catch (err: any) {
-    if (err.message.includes('404') || err.message.includes('405')) {
+    if (err.message.includes('404') || err.message.includes('405') || err.message.includes('500') || err instanceof TypeError) {
       return analyzeDirectly(generatedImageBase64, productDetails, profile);
     }
     throw err;
