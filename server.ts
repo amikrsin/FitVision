@@ -57,13 +57,25 @@ const checkRateLimit = (req: express.Request, res: express.Response, next: expre
   next();
 };
 
+  // API routes FIRST
+  app.get("/api/health", (req, res) => {
+    const keyDetected = !!(process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.GOOGLE_API_KEY);
+    res.json({ 
+      status: "ok", 
+      env: process.env.NODE_ENV,
+      keyDetected
+    });
+  });
+
 // API Routes
 app.post("/api/scrape", async (req, res) => {
   const { url } = req.body;
+  console.log(`[API] Scrape request for URL: ${url}`);
   if (!url) return res.status(400).json({ error: "URL is required" });
 
   // If the URL is already an image, return it directly to avoid unnecessary AI calls
   if (url.match(/\.(jpg|jpeg|png|webp|gif|avif)$/i) || url.includes('assets.myntassets.com')) {
+    console.log(`[API] Direct image URL detected, bypassing AI.`);
     const fileName = url.split('/').pop()?.split('?')[0] || "Product";
     const name = fileName
       .replace(/-/g, ' ')
@@ -83,6 +95,7 @@ app.post("/api/scrape", async (req, res) => {
 
   try {
     const ai = getAI();
+    console.log(`[API] Calling Gemini for scraping...`);
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Extract product details from this e-commerce URL: ${url}. 
@@ -104,9 +117,14 @@ app.post("/api/scrape", async (req, res) => {
         tools: [{ urlContext: {} }]
       },
     });
-    res.json(JSON.parse(response.text));
+    
+    const text = response.text;
+    if (!text) throw new Error("AI returned an empty response");
+    
+    console.log(`[API] Gemini response received.`);
+    res.json(JSON.parse(text));
   } catch (error: any) {
-    console.error("Scrape Error:", error);
+    console.error("[API] Scrape Error:", error);
     res.status(500).json({ error: error.message || "Failed to scrape product" });
   }
 });

@@ -6,11 +6,25 @@ export async function scrapeProductUrl(url: string): Promise<ProductDetails> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url }),
   });
+  
+  const contentType = response.headers.get("content-type");
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to scrape product");
+    if (contentType && contentType.includes("application/json")) {
+      const error = await response.json();
+      throw new Error(error.error || `Server error (${response.status})`);
+    } else {
+      const text = await response.text();
+      throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
+    }
   }
-  return response.json();
+  
+  if (contentType && contentType.includes("application/json")) {
+    return response.json();
+  } else {
+    const text = await response.text();
+    console.error("Expected JSON but got:", text);
+    throw new Error("Server did not return a valid JSON response. Please check if the backend is running correctly.");
+  }
 }
 
 export async function generateTryOnImage(
